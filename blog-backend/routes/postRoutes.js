@@ -2,11 +2,21 @@ const express = require("express");
 const router = express.Router();
 const Post = require("../models/post"); // import Post model
 
-// ✅ Create post (POST /api/posts)
-router.post("/", async (req, res) => {
+const authMiddleware = require("../middleware/authMiddleware"); // 👈 add this at the top
+
+
+// ✅ Create post (only for logged-in users)
+router.post("/", authMiddleware, async (req, res) => {
   try {
     const { title, content } = req.body;
-    const newPost = new Post({ title, content });
+    const userId = req.user.userId; // 👈 Get from JWT token
+
+    const newPost = new Post({
+      title,
+      content,
+      user: userId, // 👈 Save user ID with post
+    });
+
     const savedPost = await newPost.save();
     res.status(201).json(savedPost);
   } catch (err) {
@@ -14,15 +24,18 @@ router.post("/", async (req, res) => {
   }
 });
 
+
+
 // ✅ Get all posts (GET /api/posts)
 router.get("/", async (req, res) => {
   try {
-    const posts = await Post.find();
+    const posts = await Post.find().populate("user", "username email"); // 👈 Add this
     res.json(posts);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch posts" });
   }
 });
+
 
 // ✅ Update post (PUT /api/posts/:id)
 router.put("/:id", async (req, res) => {
